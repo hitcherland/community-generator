@@ -6,6 +6,9 @@ cytoscape.use(cola);
 var ColorHash = require('color-hash');
 var colorHash = new ColorHash({lightness: 0.8});
 
+var firstNames = require('./data/first-names')
+var lastNames = require('./data/last-names')
+
 $(document.body).css({
     'margin': 0,
 });
@@ -37,11 +40,14 @@ function generateCommunity(size) {
         }
 
         for(let i=0; i<size; i++) {
+            var name = firstNames[~~(Math.random()*firstNames.length)];
             members.push({
                 group: 'nodes',
                 data: {
                     id: id,
                     family: family_id,
+                    label: name,
+                    name: name,
                 },
             });
             id += 1;
@@ -55,12 +61,14 @@ function generateCommunity(size) {
     var families = [];
     while(id < size) {
         let family_members = generateFamily(family_id);
+        var family_name = lastNames[~~(Math.random()*lastNames.length)];
         let family = {
             group: 'nodes',
             data: {
-                label: `family ${family_id}`,
+                label: family_name,
                 'id': `family_${family_id}`,
                 family: family_id,
+                name: family_name,
             }
         }
 
@@ -94,12 +102,14 @@ function generateCommunity(size) {
             connect = Math.floor(Math.random() * family_id);
         }
 
+        console.log(connect, family.data.id);
+
         output.push({
             data: {
                 group: 'edges',
-                id: `F2F:${family.data.id}_${connect}`,
+                id: `${family.data.id}_to_family_${connect}`,
                 source: family.data.id,
-                target: connect,
+                target: `family_${connect}`,
             }
         });
     });
@@ -120,6 +130,24 @@ var cy = cytoscape({
             'background-color': '#f92411'
         }
     }, {
+        selector: 'node[label]',
+        css: {
+            'label': 'data(label)',
+            'text-valign': 'bottom',
+        }
+    }, {
+        selector: 'node:parent[label]',
+        css: {
+            'color': 'white',
+            'text-transform': 'uppercase',
+            'font-weight': 'bold',
+            'font-size': '1.1em',
+            'text-background-color': 'black',
+            'text-background-opacity': 1,
+            'text-background-shape': 'rectangle',
+            'text-background-padding': '0.1em',
+        }
+    }, {
         selector: 'node[family]',
         css: {
             'background-color': function(ele) {
@@ -137,7 +165,8 @@ var cy = cytoscape({
     }, {
         selector: 'edge',
         css: {
-            'line-color': '#f92411'
+            'line-color': '#333',
+            'opacity': 0.333,
         }
     }]
 });

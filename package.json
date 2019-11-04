@@ -5,12 +5,13 @@
   "scripts": {
     "watch": "webpack --watch",
     "start": "webpack-dev-server --open",
-    "build": "webpack"
+    "build": "webpack; ghpages -p dist"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "ghpages": "0.0.10",
     "webpack": "^4.41.2",
     "webpack-cli": "^3.3.10",
     "webpack-dev-server": "^3.9.0"
