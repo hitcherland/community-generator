@@ -19,97 +19,138 @@ container.css({
     'height': '100vh',
 });
 
+var uk_stats = {
+    household_size_cdf: [{
+        cumulate: 0.290361183638,
+        type: [
+            {cumulate: 1, description: "one person household"},
+        ],
+    }, {
+        cumulate: 0.635081230055,
+        type: [
+            {cumulate: 0.12372799224680989, description: "uncoupled adults"},
+            {cumulate: 1, description: "one family"},
+        ],
+    }, {
+        cumulate: 0.793552364375,
+        type: [
+            {cumulate: 0.11827071538857437, description: "uncoupled adults"},
+            {cumulate: 0.9558929490478641, description: "one family"},
+            {cumulate: 1, description: "multifamily"},
+        ],
+    }, {
+        cumulate: 0.933529155788,
+        type: [
+            {cumulate: 0.11827071538857437, description: "uncoupled adults"},
+            {cumulate: 0.9558929490478641, description: "one family"},
+            {cumulate: 1, description: "multifamily"},
+        ],
+    }, {
+        cumulate: 0.980417754569,
+        type: [
+            {cumulate: 0.11827071538857437, description: "uncoupled adults"},
+            {cumulate: 0.9558929490478641, description: "one family"},
+            {cumulate: 1, description: "multifamily"},
+        ],
+    }, {
+        cumulate: 1.0,
+        type: [
+            {cumulate: 0.11827071538857437, description: "uncoupled adults"},
+            {cumulate: 0.9558929490478641, description: "one family"},
+            {cumulate: 1, description: "multifamily"},
+        ],
+    }]
+}
+
 function generateCommunity(size) {
     var id = 0;
-    function generateFamily(family_id) {
-        var members = [];
+    function generateHousehold(household_id) {
+        var household_name = lastNames[~~(Math.random()*lastNames.length)];
+        var household = {
+            group: 'nodes',
+            data: {
+                id: `household_${household_id}`,
+                type: "household",
+                household_type: undefined,
+                label: household_name,
+            },
+        };
+
+        let household_type, size;
+        var cdf = uk_stats.household_size_cdf
+
         var r = Math.random();
-        let size = 0;
-        if(r < 0.2745) {
-            size = 1;
-        } else if(r < 0.2745 + (0.4924) / 2) {
-            size = 2;
-        } else if(r < 0.2745 + 0.4924) {
-            size = 3;
-        } else if(r < 0.2745 + 0.4924 + (0.1934) / 2) {
-            size = 4;
-        } else if(r < 0.2745 + 0.4924 + 0.1934) {
-            size = 5;
-        } else {
-            size = Math.floor(6 * Math.exp(Math.random() ** 10));
+        for(let i=0; i<cdf.length; i++) {
+            let cdf_v = cdf[i].cumulate;
+            if(cdf_v >= 1.0) {
+                size = i + 2 - Math.exp(- 0.333 * Math.random())
+                let R = Math.random()
+                for(let j=0; j<cdf[i].type.length; j++) {
+                    let v = cdf[i].type[j].cumulate;
+                    if(R < v) {
+                        household.data.household_type = cdf[i].type[j].description;
+                        break;
+                    }
+                }
+                break;
+            } else if(r < cdf_v) {
+                size = i + 1;
+                let R = Math.random()
+                for(let j=0; j<cdf[i].type.length; j++) {
+                    let v = cdf[i].type[j].cumulate;
+                    if(R < v) {
+                        household.data.household_type = cdf[i].type[j].description;
+                        break;
+                    }
+                }
+                break;
+            }
         }
 
+        var nodes = [household];
         for(let i=0; i<size; i++) {
-            var name = firstNames[~~(Math.random()*firstNames.length)];
-            members.push({
+            let name = firstNames[~~(Math.random()*firstNames.length)];
+            nodes.push({
                 group: 'nodes',
                 data: {
                     id: id,
-                    family: family_id,
+                    household_id: household_id,
+                    parent: `household_${household_id}`,
                     label: name,
-                    name: name,
+                    first_name: name,
+                    last_name: household_name,
                 },
             });
             id += 1;
         }
-        
-        return members;
+        return nodes;
     }
 
     var output = [];
-    var family_id = 0;
-    var families = [];
+    var household_id = 0;
+    var households = [];
     while(id < size) {
-        let family_members = generateFamily(family_id);
-        var family_name = lastNames[~~(Math.random()*lastNames.length)];
-        let family = {
-            group: 'nodes',
-            data: {
-                label: family_name,
-                'id': `family_${family_id}`,
-                family: family_id,
-                name: family_name,
-            }
-        }
-
-        output.push(family)
-        families.push(family);
-
-        family_members.forEach(member => {
-            member.data.parent = `family_${family_id}`,
-            output.push(member);
-            family_members.forEach(other => {
-                if(other === member)
-                    return
-
-                output.push({
-                    group: 'edges',
-                    data: {
-                        id: `intra_${member.data.id}_to_${other.data.id}`,
-                        source: member.data.id,
-                        target: other.data.id,
-                    }
-                })
-            });
+        let household_nodes = generateHousehold(household_id);
+        households.push(household_nodes[0]);
+        household_nodes.forEach(node => {
+            output.push(node);
         });
 
-        family_id += 1;
+        household_id += 1;
     }
 
-    families.forEach(family => {
-        var connect = Math.floor(Math.random() * family_id);
-        while(`family_${connect}` == family.data.id) {
-            connect = Math.floor(Math.random() * family_id);
+    households.forEach(household => {
+        var connect = Math.floor(Math.random() * household_id);
+        while(`household_${connect}` == household.data.id) {
+            connect = Math.floor(Math.random() * household_id);
         }
-
-        console.log(connect, family.data.id);
 
         output.push({
             data: {
                 group: 'edges',
-                id: `${family.data.id}_to_family_${connect}`,
-                source: family.data.id,
-                target: `family_${connect}`,
+                id: `${household.data.id}_to_household_${connect}`,
+                source: household.data.id,
+                target: `household_${connect}`,
             }
         });
     });
@@ -148,17 +189,20 @@ var cy = cytoscape({
             'text-background-padding': '0.1em',
         }
     }, {
-        selector: 'node[family]',
+        selector: 'node[household_id]',
         css: {
             'background-color': function(ele) {
-                return colorHash.hex(ele.data('family'));
+                return colorHash.hex(ele.data('household_id'));
             }
         }
     }, {
         selector: 'node:parent',
         css: {
+            'label': function(ele) {
+                return ele.data('label') + ' (' + ele.data('household_type') + ")";
+            },
             'background-color': function(ele) {
-                return colorHash.hex(ele.data('family'));
+                return colorHash.hex(ele.data('household_id'));
             },
             'background-opacity': 0.333
         }
